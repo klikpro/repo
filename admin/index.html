@@ -13,11 +13,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-app
 .wrap{max-width:760px;margin:0 auto;padding:40px 20px 72px}
 header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px}
 h1{margin:0;font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
-h2{font-size:1.05rem;margin:36px 0 4px}
 a{color:var(--accent)}
-p.hint{margin:0 0 14px;color:var(--muted);font-size:.88rem}
+.hint{margin:0 0 14px;color:var(--muted);font-size:.88rem}
 .row{display:grid;grid-template-columns:1fr 1.5fr auto;gap:8px;margin-bottom:8px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
 input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:4px;background:var(--field);color:var(--ink);font:inherit;font-size:.92rem}
 input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 button{font:inherit;font-size:.9rem;padding:9px 14px;border:1px solid var(--ink);border-radius:4px;background:transparent;color:var(--ink);cursor:pointer}
@@ -28,38 +26,26 @@ button.del{border-color:var(--danger);color:var(--danger)}
 button.del:hover{background:var(--danger);color:#fff}
 .btns{display:flex;gap:6px}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.pw{display:flex;gap:8px;margin:24px 0 8px;max-width:420px}
 #status{margin-top:14px;min-height:1.4em;font-size:.92rem}
-@media (max-width:600px){.row,.two{grid-template-columns:1fr}}
+@media (max-width:600px){.row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header><h1>Admin</h1><a href="../">Lihat halaman</a></header>
-
-  <h2>Tautan</h2>
+  <header><h1>Admin</h1><a href="/">Lihat halaman</a></header>
   <p class="hint">Isi nama tampilan dan alamat website. Urutan di sini sama dengan urutan di halaman utama.</p>
   <div id="rows"></div>
-  <div class="actions">
-    <button id="add">Tambah tautan</button>
-    <button id="saveGh" class="main">Simpan ke GitHub</button>
-    <button id="download">Unduh links.json</button>
-  </div>
+  <div class="actions"><button id="add">Tambah tautan</button></div>
+  <div class="pw"><input id="pw" type="password" placeholder="Password admin" autocomplete="current-password"><button id="save" class="main">Simpan</button></div>
   <div id="status" role="status"></div>
-
-  <h2>Koneksi GitHub</h2>
-  <p class="hint">Token hanya disimpan di browser ini. Cara membuatnya ada di file petunjuk.</p>
-  <div class="two"><input id="owner" placeholder="Username GitHub"><input id="repo" placeholder="Nama repo"></div>
-  <div class="two"><input id="branch" placeholder="Branch (main)"><input id="path" placeholder="File data (links.json)"></div>
-  <input id="token" type="password" placeholder="Personal access token" autocomplete="off">
 </div>
 <script>
 const $=id=>document.getElementById(id);
 let links=[];
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
-
 async function load(){
-  try{const r=await fetch('../links.json?t='+Date.now());if(r.ok){const a=await r.json();links=(Array.isArray(a)?a:[]).filter(x=>x&&x.url).map(x=>({name:String(x.name||''),url:String(x.url)}));return}}catch(e){}
-  links=[];
+  try{const r=await fetch('/links.json?t='+Date.now());if(r.ok){const a=await r.json();links=(Array.isArray(a)?a:[]).filter(x=>x&&x.url).map(x=>({name:String(x.name||''),url:String(x.url)}))}}catch(e){}
 }
 function renderRows(){
   const box=$('rows');box.textContent='';
@@ -73,43 +59,22 @@ function renderRows(){
     b.append(up,d);row.append(n,u,b);box.appendChild(row);
   });
 }
-function normalized(){
-  return links.map(l=>({name:l.name.trim(),url:/^https?:\/\//i.test(l.url.trim())?l.url.trim():'https://'+l.url.trim()})).filter(l=>l.url!=='https://');
-}
+const normalized=()=>links.map(l=>({name:l.name.trim(),url:/^https?:\/\//i.test(l.url.trim())?l.url.trim():'https://'+l.url.trim()})).filter(l=>l.url!=='https://');
 function say(t,err){const s=$('status');s.textContent=t;s.style.color=err?'var(--danger)':'var(--accent)'}
-function gh(){return{owner:$('owner').value.trim(),repo:$('repo').value.trim(),branch:$('branch').value.trim()||'main',path:$('path').value.trim()||'links.json',token:$('token').value.trim()}}
-
-async function saveGithub(){
-  const c=gh();
-  if(!c.owner||!c.repo||!c.token){say('Isi username, nama repo, dan token dulu.',true);return}
-  ['owner','repo','branch','path','token'].forEach(k=>store.set('gh_'+k,c[k]));
-  const data=normalized();
-  const url=`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}`;
-  const h={Authorization:'Bearer '+c.token,Accept:'application/vnd.github+json'};
+async function save(){
+  const password=$('pw').value;
+  if(!password){say('Isi password admin dulu.',true);return}
   say('Menyimpan...');
   try{
-    let sha;
-    const g=await fetch(url+'?ref='+encodeURIComponent(c.branch),{headers:h});
-    if(g.ok)sha=(await g.json()).sha;
-    else if(g.status!==404){say('Gagal membaca repo (kode '+g.status+'). Periksa token, username, dan nama repo.',true);return}
-    const content=btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2))));
-    const p=await fetch(url,{method:'PUT',headers:h,body:JSON.stringify({message:'Update daftar tautan',content,branch:c.branch,sha})});
-    if(p.ok){links=data;renderRows();say('Tersimpan. Halaman utama berubah dalam 1-2 menit.')}
-    else say('Gagal menyimpan (kode '+p.status+'). Pastikan token punya izin Contents: Read and write.',true);
-  }catch(e){say('Tidak bisa terhubung ke GitHub.',true)}
+    const r=await fetch('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password,links:normalized()})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok){store.set('pw',password);links=j.links||normalized();renderRows();say('Tersimpan. Halaman utama berubah dalam 1 menit setelah Vercel selesai deploy.')}
+    else say(j.error||'Gagal menyimpan (kode '+r.status+')',true);
+  }catch(e){say('Tidak bisa terhubung ke server.',true)}
 }
 $('add').onclick=()=>{links.push({name:'',url:''});renderRows()};
-$('saveGh').onclick=saveGithub;
-$('download').onclick=()=>{
-  const b=new Blob([JSON.stringify(normalized(),null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='links.json';a.click();
-};
-// Isi otomatis username dan repo dari alamat github.io
-let guessO='',guessR='';
-if(location.hostname.endsWith('.github.io')){guessO=location.hostname.split('.')[0];guessR=location.pathname.split('/')[1]||location.hostname}
-['owner','repo','branch','path','token'].forEach(k=>{$(k).value=store.get('gh_'+k)||''});
-if(!$('owner').value)$('owner').value=guessO;
-if(!$('repo').value)$('repo').value=guessR;
+$('save').onclick=save;
+$('pw').value=store.get('pw')||'';
 load().then(renderRows);
 </script>
 </body>
