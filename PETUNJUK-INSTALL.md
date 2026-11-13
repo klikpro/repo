@@ -56,6 +56,14 @@ Kalau Environment Variables diubah setelah deploy, buka **Deployments**, lalu **
 
 Password disimpan di browser yang Anda pakai, jadi di browser lain Anda perlu mengetiknya sekali.
 
+## Fitur halaman
+
+- **Kategori**: isi kolom Kategori di admin. Di halaman utama muncul tab penyaring dan tautan dikelompokkan per kategori. Kolom boleh dikosongkan.
+- **Logo website**: kartu menampilkan logo website tujuan, dan memakai huruf pertama kalau logo tidak bisa dimuat.
+- **Urutan**: di admin, seret ikon titik di kiri baris, atau pakai tombol panah (cocok untuk HP). Panel Pratinjau di sebelah kanan ikut berubah.
+- **Pintasan**: tekan `/` untuk langsung mencari, Enter untuk membuka hasil pertama, Esc untuk menghapus pencarian.
+- **Sering dibuka**: empat tautan yang paling sering diklik muncul di bagian atas. Datanya tersimpan di browser masing-masing pengunjung, bukan di server.
+
 ## Masalah yang sering muncul
 
 - **"Environment Variables di Vercel belum lengkap"**: ada variabel yang belum diisi, atau belum Redeploy setelah mengisi.
