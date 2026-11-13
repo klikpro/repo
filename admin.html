@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin</title>
+<style>
+:root{--bg:#f3f3ee;--ink:#18181b;--muted:#6b6b70;--line:#c9c9c0;--field:#fff;--accent:#2f4bd6;--danger:#c0332c}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--ink:#f1f1ec;--muted:#9a9aa0;--line:#37373c;--field:#1e1e21;--accent:#7f95ff;--danger:#ff8d86}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:40px 20px 72px}
+header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px}
+h1{margin:0;font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.05rem;margin:36px 0 4px}
+a{color:var(--accent)}
+p.hint{margin:0 0 14px;color:var(--muted);font-size:.88rem}
+.row{display:grid;grid-template-columns:1fr 1.5fr auto;gap:8px;margin-bottom:8px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:4px;background:var(--field);color:var(--ink);font:inherit;font-size:.92rem}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{font:inherit;font-size:.9rem;padding:9px 14px;border:1px solid var(--ink);border-radius:4px;background:transparent;color:var(--ink);cursor:pointer}
+button:hover{background:var(--ink);color:var(--bg)}
+button.main{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.main:hover{filter:brightness(1.1);background:var(--accent);color:#fff}
+button.del{border-color:var(--danger);color:var(--danger)}
+button.del:hover{background:var(--danger);color:#fff}
+.btns{display:flex;gap:6px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+#status{margin-top:14px;min-height:1.4em;font-size:.92rem}
+@media (max-width:600px){.row,.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>Admin</h1><a href="../">Lihat halaman</a></header>
+
+  <h2>Tautan</h2>
+  <p class="hint">Isi nama tampilan dan alamat website. Urutan di sini sama dengan urutan di halaman utama.</p>
+  <div id="rows"></div>
+  <div class="actions">
+    <button id="add">Tambah tautan</button>
+    <button id="saveGh" class="main">Simpan ke GitHub</button>
+    <button id="download">Unduh links.json</button>
+  </div>
+  <div id="status" role="status"></div>
+
+  <h2>Koneksi GitHub</h2>
+  <p class="hint">Token hanya disimpan di browser ini. Cara membuatnya ada di file petunjuk.</p>
+  <div class="two"><input id="owner" placeholder="Username GitHub"><input id="repo" placeholder="Nama repo"></div>
+  <div class="two"><input id="branch" placeholder="Branch (main)"><input id="path" placeholder="File data (links.json)"></div>
+  <input id="token" type="password" placeholder="Personal access token" autocomplete="off">
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let links=[];
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+async function load(){
+  try{const r=await fetch('../links.json?t='+Date.now());if(r.ok){const a=await r.json();links=(Array.isArray(a)?a:[]).filter(x=>x&&x.url).map(x=>({name:String(x.name||''),url:String(x.url)}));return}}catch(e){}
+  links=[];
+}
+function renderRows(){
+  const box=$('rows');box.textContent='';
+  links.forEach((l,i)=>{
+    const row=document.createElement('div');row.className='row';
+    const n=document.createElement('input');n.placeholder='Nama tampilan';n.value=l.name;n.oninput=()=>links[i].name=n.value;
+    const u=document.createElement('input');u.placeholder='https://contoh.com';u.value=l.url;u.oninput=()=>links[i].url=u.value;
+    const b=document.createElement('div');b.className='btns';
+    const up=document.createElement('button');up.textContent='Naik';up.onclick=()=>{if(i>0){[links[i-1],links[i]]=[links[i],links[i-1]];renderRows()}};
+    const d=document.createElement('button');d.textContent='Hapus';d.className='del';d.onclick=()=>{links.splice(i,1);renderRows()};
+    b.append(up,d);row.append(n,u,b);box.appendChild(row);
+  });
+}
+function normalized(){
+  return links.map(l=>({name:l.name.trim(),url:/^https?:\/\//i.test(l.url.trim())?l.url.trim():'https://'+l.url.trim()})).filter(l=>l.url!=='https://');
+}
+function say(t,err){const s=$('status');s.textContent=t;s.style.color=err?'var(--danger)':'var(--accent)'}
+function gh(){return{owner:$('owner').value.trim(),repo:$('repo').value.trim(),branch:$('branch').value.trim()||'main',path:$('path').value.trim()||'links.json',token:$('token').value.trim()}}
+
+async function saveGithub(){
+  const c=gh();
+  if(!c.owner||!c.repo||!c.token){say('Isi username, nama repo, dan token dulu.',true);return}
+  ['owner','repo','branch','path','token'].forEach(k=>store.set('gh_'+k,c[k]));
+  const data=normalized();
+  const url=`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}`;
+  const h={Authorization:'Bearer '+c.token,Accept:'application/vnd.github+json'};
+  say('Menyimpan...');
+  try{
+    let sha;
+    const g=await fetch(url+'?ref='+encodeURIComponent(c.branch),{headers:h});
+    if(g.ok)sha=(await g.json()).sha;
+    else if(g.status!==404){say('Gagal membaca repo (kode '+g.status+'). Periksa token, username, dan nama repo.',true);return}
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2))));
+    const p=await fetch(url,{method:'PUT',headers:h,body:JSON.stringify({message:'Update daftar tautan',content,branch:c.branch,sha})});
+    if(p.ok){links=data;renderRows();say('Tersimpan. Halaman utama berubah dalam 1-2 menit.')}
+    else say('Gagal menyimpan (kode '+p.status+'). Pastikan token punya izin Contents: Read and write.',true);
+  }catch(e){say('Tidak bisa terhubung ke GitHub.',true)}
+}
+$('add').onclick=()=>{links.push({name:'',url:''});renderRows()};
+$('saveGh').onclick=saveGithub;
+$('download').onclick=()=>{
+  const b=new Blob([JSON.stringify(normalized(),null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='links.json';a.click();
+};
+// Isi otomatis username dan repo dari alamat github.io
+let guessO='',guessR='';
+if(location.hostname.endsWith('.github.io')){guessO=location.hostname.split('.')[0];guessR=location.pathname.split('/')[1]||location.hostname}
+['owner','repo','branch','path','token'].forEach(k=>{$(k).value=store.get('gh_'+k)||''});
+if(!$('owner').value)$('owner').value=guessO;
+if(!$('repo').value)$('repo').value=guessR;
+load().then(renderRows);
+</script>
+</body>
+</html>
