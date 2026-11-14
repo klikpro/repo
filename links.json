@@ -1,14 +1,6 @@
 [
-  {
-    "name": "Sharing Gdrive",
-    "url": "https://drive.google.com/drive/folders/1liD1_rrHMNloYZ9n76-YIxv6I1lVwfxs?usp=sharing"
-  },
-  {
-    "name": "Klikpro",
-    "url": "https://klikpro.cloud"
-  },
-  {
-    "name": "Trydesk",
-    "url": "https://trydesk.ai.id/downloads/win/TryDesk-Setup-1.3.8.exe"
-  }
+  {"name": "Google", "url": "https://www.google.com", "category": "Pencarian"},
+  {"name": "Wikipedia", "url": "https://id.wikipedia.org", "category": "Pencarian"},
+  {"name": "GitHub", "url": "https://github.com", "category": "Kerja"},
+  {"name": "Vercel", "url": "https://vercel.com", "category": "Kerja"}
 ]

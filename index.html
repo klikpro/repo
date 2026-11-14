@@ -63,6 +63,7 @@ body{background:var(--bg);color:var(--ink);font:16px/1.4 Inter,"SF Pro Display",
   <div class="tabs" id="tabs"></div>
   <div id="list"></div>
 </div>
+<script src="config.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const PAL=[['#0b4dbb','#2563eb'],['#2563eb','#3b82f6'],['#0b4dbb','#3b82f6'],['#1d4ed8','#7c3aed'],['#0b4dbb','#059669'],['#2563eb','#0b4dbb']];
@@ -70,12 +71,19 @@ const still=matchMedia('(prefers-reduced-motion:reduce)').matches;
 const fine=matchMedia('(hover:hover) and (pointer:fine)').matches;
 let links=[],tab='';
 async function load(){
+  if(SHEET_URL){
+    try{const r=await fetch(SHEET_URL);if(r.ok){const j=await r.json();links=(j.links||[]).filter(x=>x&&x.url);try{localStorage.setItem('cache',JSON.stringify(links))}catch(e){}return}}catch(e){}
+    try{links=JSON.parse(localStorage.getItem('cache')||'[]')}catch(e){links=[]}
+    return;
+  }
   try{const r=await fetch('links.json?t='+Date.now());if(r.ok){const a=await r.json();links=(Array.isArray(a)?a:[]).filter(x=>x&&x.url);return}}catch(e){}
-  try{links=JSON.parse(localStorage.getItem('links')||'[]')}catch(e){links=[]}
+  links=[];
 }
 const host=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return u}};
-const getClicks=()=>{try{return JSON.parse(localStorage.getItem('clicks')||'{}')}catch(e){return{}}};
-function bump(u){const c=getClicks();c[u]=(c[u]||0)+1;try{localStorage.setItem('clicks',JSON.stringify(c))}catch(e){}}
+function bump(u){
+  const l=links.find(x=>x.url===u);if(l)l.clicks=(l.clicks||0)+1;
+  if(SHEET_URL){try{fetch(SHEET_URL+'?klik='+encodeURIComponent(u),{mode:'no-cors',keepalive:true})}catch(e){}}
+}
 function tilt(el){
   el.addEventListener('pointermove',e=>{
     const r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
@@ -130,8 +138,8 @@ function render(){
   if(!shown.length){const d=document.createElement('p');d.className='empty';d.textContent=links.length?'Tidak ada yang cocok.':'Belum ada tautan.';box.appendChild(d);return}
   let n=0;
   if(!q&&!tab){
-    const c=getClicks(),top=shown.filter(l=>c[l.url]>0).sort((a,b)=>c[b.url]-c[a.url]).slice(0,4);
-    if(top.length){section('Sering dibuka',top,box,0);n=top.length}
+    const top=shown.filter(l=>l.clicks>0).sort((a,b)=>b.clicks-a.clicks).slice(0,4);
+    if(top.length){section('Terpopuler',top,box,0);n=top.length}
   }
   const cats=[...new Set(shown.map(l=>l.category).filter(Boolean))];
   if(q||tab||!cats.length){section(n?'Semua tautan':'',shown,box,n)}
@@ -149,6 +157,7 @@ addEventListener('keydown',e=>{
     const f=visible()[0];if(f){bump(f.url);window.open(f.url,'_blank','noopener')}
   }
 });
+if(SHEET_URL){try{const c=JSON.parse(localStorage.getItem('cache')||'null');if(c){links=c;renderTabs();render()}}catch(e){}}
 load().then(()=>{renderTabs();render()});
 
 // Titik biru halus yang melayang naik
