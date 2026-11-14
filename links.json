@@ -1,6 +1,6 @@
 [
-  {"name": "Google", "url": "https://www.google.com", "category": "Pencarian"},
-  {"name": "Wikipedia", "url": "https://id.wikipedia.org", "category": "Pencarian"},
-  {"name": "GitHub", "url": "https://github.com", "category": "Kerja"},
-  {"name": "Vercel", "url": "https://vercel.com", "category": "Kerja"}
+  {
+    "name": "Sharing Gdrive",
+    "url": "https://drive.google.com/drive/folders/19xWhFRSzEvdxyGl5fqF3Qq-t-3jQonz1"
+  }
 ]
